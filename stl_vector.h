@@ -33,6 +33,7 @@
 
 #include <concept_checks.h>
 
+// 这个宏在另一个头文件中定义，这里并没有引用头文件，是因为当前头文件跟另一个头文件不能单独编译，而是都放到vector.h头文件里面一起编译
 __STL_BEGIN_NAMESPACE 
 
 #if defined(__sgi) && !defined(__GNUC__) && (_MIPS_SIM != _MIPS_SIM_ABI32)
@@ -48,10 +49,12 @@ __STL_BEGIN_NAMESPACE
 
 #ifdef __STL_USE_STD_ALLOCATORS
 
+// 基类
 // Base class for ordinary allocators.
 template <class _Tp, class _Allocator, bool _IsStatic>
 class _Vector_alloc_base {
 public:
+  // 存在::的时候，避免歧义，使用typename
   typedef typename _Alloc_traits<_Tp, _Allocator>::allocator_type
           allocator_type;
   allocator_type get_allocator() const { return _M_data_allocator; }
@@ -61,17 +64,23 @@ public:
   {}
   
 protected:
+  // 内存分配器
   allocator_type _M_data_allocator;
+  // 数据指针
   _Tp* _M_start;
   _Tp* _M_finish;
   _Tp* _M_end_of_storage;
 
+  // 分配n个元素的内存，返回首地址指针
   _Tp* _M_allocate(size_t __n)
     { return _M_data_allocator.allocate(__n); }
+  // 销毁指针后面n个元素内存
   void _M_deallocate(_Tp* __p, size_t __n)
     { if (__p) _M_data_allocator.deallocate(__p, __n); }
 };
 
+
+// 模板特化，不存储内存分配器对象，而是调用分配器的static方法分配、释放内存
 // Specialization for allocators that have the property that we don't
 // actually have to store an allocator object.  
 template <class _Tp, class _Allocator>
@@ -79,6 +88,7 @@ class _Vector_alloc_base<_Tp, _Allocator, true> {
 public:
   typedef typename _Alloc_traits<_Tp, _Allocator>::allocator_type
           allocator_type;
+  // 返回临时构造的内存分配器对象
   allocator_type get_allocator() const { return allocator_type(); }
 
   _Vector_alloc_base(const allocator_type&)
@@ -86,17 +96,20 @@ public:
   {}
   
 protected:
+  // 数据指针
   _Tp* _M_start;
   _Tp* _M_finish;
   _Tp* _M_end_of_storage;
 
   typedef typename _Alloc_traits<_Tp, _Allocator>::_Alloc_type _Alloc_type;
+  // 调用static方法分配、销毁内存
   _Tp* _M_allocate(size_t __n)
     { return _Alloc_type::allocate(__n); }
   void _M_deallocate(_Tp* __p, size_t __n)
     { _Alloc_type::deallocate(__p, __n);}
 };
 
+// 基类，分配n个元素内存空间
 template <class _Tp, class _Alloc>
 struct _Vector_base
   : public _Vector_alloc_base<_Tp, _Alloc,
@@ -108,6 +121,7 @@ struct _Vector_base
   typedef typename _Base::allocator_type allocator_type;
 
   _Vector_base(const allocator_type& __a) : _Base(__a) {}
+  // 分配n个元素的内存空间，但不实际初始化
   _Vector_base(size_t __n, const allocator_type& __a) : _Base(__a) {
     _M_start = _M_allocate(__n);
     _M_finish = _M_start;
@@ -119,6 +133,7 @@ struct _Vector_base
 
 #else /* __STL_USE_STD_ALLOCATORS */
 
+// 基类，simple_alloc的静态方法分配、销毁内存
 template <class _Tp, class _Alloc> 
 class _Vector_base {
 public:
@@ -142,6 +157,7 @@ protected:
   _Tp* _M_finish;
   _Tp* _M_end_of_storage;
 
+  // static方法分配、销毁内存
   typedef simple_alloc<_Tp, _Alloc> _M_data_allocator;
   _Tp* _M_allocate(size_t __n)
     { return _M_data_allocator::allocate(__n); }
@@ -151,16 +167,18 @@ protected:
 
 #endif /* __STL_USE_STD_ALLOCATORS */
 
+// vector类。默认模板参数，可选
 template <class _Tp, class _Alloc = __STL_DEFAULT_ALLOCATOR(_Tp) >
 class vector : protected _Vector_base<_Tp, _Alloc> 
 {
   // requirements:
-
+  // static int __xx_xx
   __STL_CLASS_REQUIRES(_Tp, _Assignable);
 
 private:
   typedef _Vector_base<_Tp, _Alloc> _Base;
 public:
+  // 迭代器就是指针
   typedef _Tp value_type;
   typedef value_type* pointer;
   typedef const value_type* const_pointer;
